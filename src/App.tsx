@@ -8,6 +8,11 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LandingPage } from "@/components/LandingPage";
 import { Dashboard } from "@/components/Dashboard";
 import { DashboardOverview } from "@/components/DashboardOverview";
+import { FeedbackManagement } from "@/components/FeedbackManagement";
+import { Analytics } from "@/components/Analytics";
+import { IssuesTracking } from "@/components/IssuesTracking";
+import { TeamManagement } from "@/components/TeamManagement";
+import { Settings } from "@/components/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,11 +70,11 @@ const App = () => (
               }
             >
               <Route index element={<DashboardOverview />} />
-              <Route path="feedback" element={<div className="p-8 text-center text-muted-foreground">Feedback management coming soon...</div>} />
-              <Route path="analytics" element={<div className="p-8 text-center text-muted-foreground">Advanced analytics coming soon...</div>} />
-              <Route path="issues" element={<div className="p-8 text-center text-muted-foreground">Issue tracking coming soon...</div>} />
-              <Route path="team" element={<div className="p-8 text-center text-muted-foreground">Team management coming soon...</div>} />
-              <Route path="settings" element={<div className="p-8 text-center text-muted-foreground">Settings coming soon...</div>} />
+              <Route path="feedback" element={<FeedbackManagement />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="issues" element={<IssuesTracking />} />
+              <Route path="team" element={<TeamManagement />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
