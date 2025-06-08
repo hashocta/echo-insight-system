@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
@@ -28,7 +27,7 @@ export const RealTimeNotifications = () => {
   useEffect(() => {
     if (!user) return
 
-    // Subscribe to real-time changes
+    // Subscribe to real-time changes - RLS automatically filters data for authenticated user
     const feedbackChannel = supabase
       .channel('feedback-notifications')
       .on(
@@ -36,8 +35,8 @@ export const RealTimeNotifications = () => {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'feedbacks',
-          filter: `username=eq.${user.user_metadata?.username}`
+          table: 'feedbacks'
+          // No filter needed - RLS handles user isolation
         },
         (payload) => {
           const newNotification: Notification = {
@@ -63,8 +62,8 @@ export const RealTimeNotifications = () => {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'current_issues',
-          filter: `username=eq.${user.user_metadata?.username}`
+          table: 'current_issues'
+          // No filter needed - RLS handles user isolation
         },
         (payload) => {
           const newNotification: Notification = {

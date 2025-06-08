@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,16 +22,19 @@ export const FeedbackManagement = () => {
   const [dateFilter, setDateFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null)
+  const { user } = useAuth()
   const { toast } = useToast()
 
-  // Fetch feedbacks with pagination and filters
+  // Fetch feedbacks with pagination and filters - RLS automatically filters by user_id
   const { data: feedbackData, isLoading, refetch } = useQuery({
     queryKey: ['feedbacks', currentPage, searchTerm, ratingFilter, dateFilter],
     queryFn: async () => {
+      if (!user) throw new Error('User not authenticated')
+
       let query = supabase
         .from('feedbacks')
         .select('*', { count: 'exact' })
-        .order('received_at', { ascending: false })
+        .order('received_at', { ascending: false }) // Uses idx_feedbacks_received_at index
 
       // Apply search filter
       if (searchTerm) {
@@ -40,7 +43,6 @@ export const FeedbackManagement = () => {
 
       // Apply rating filter
       if (ratingFilter !== 'all') {
-        const rating = parseFloat(ratingFilter)
         if (ratingFilter === '4+') {
           query = query.gte('average_rating', 4)
         } else if (ratingFilter === '3+') {
@@ -81,21 +83,29 @@ export const FeedbackManagement = () => {
         totalCount: count || 0,
         totalPages: Math.ceil((count || 0) / ITEMS_PER_PAGE)
       }
-    }
+    },
+    enabled: !!user
   })
 
   const markAsRead = async (feedbackId: string) => {
     try {
-      // This would require adding a 'read' column to the feedbacks table
-      // For now, we'll just show a toast
+      // Update processed_at timestamp to mark as read
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ processed_at: new Date().toISOString() })
+        .eq('id', feedbackId)
+
+      if (error) throw error
+
+      await refetch()
       toast({
         title: "Marked as read",
         description: "Feedback has been marked as read.",
       })
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update feedback status.",
+        description: error.message,
         variant: "destructive",
       })
     }
@@ -272,8 +282,9 @@ export const FeedbackManagement = () => {
                         variant="outline" 
                         size="sm"
                         onClick={() => markAsRead(feedback.id)}
+                        disabled={!!feedback.processed_at}
                       >
-                        Mark Read
+                        {feedback.processed_at ? 'Read' : 'Mark Read'}
                       </Button>
                     </div>
                   </TableCell>

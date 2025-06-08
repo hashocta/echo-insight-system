@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -20,24 +19,29 @@ export const IssuesTracking = () => {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Fetch issues
+  // Fetch issues - RLS automatically filters by username matching user
   const { data: issues = [], isLoading } = useQuery({
     queryKey: ['current_issues'],
     queryFn: async () => {
+      if (!user) throw new Error('User not authenticated')
+
       const { data, error } = await supabase
         .from('current_issues')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }) // Uses idx_current_issues_username for efficient filtering
       
       if (error) throw error
       return data || []
-    }
+    },
+    enabled: !!user
   })
 
-  // Fetch related feedback for each issue
+  // Fetch related feedback for each issue - RLS automatically filters by user_id
   const { data: feedbackCounts = {} } = useQuery({
     queryKey: ['issue-feedback-counts'],
     queryFn: async () => {
+      if (!user) throw new Error('User not authenticated')
+
       const { data: feedbacks, error } = await supabase
         .from('feedbacks')
         .select('feedback_summary')
@@ -54,20 +58,27 @@ export const IssuesTracking = () => {
       
       return counts
     },
-    enabled: issues.length > 0
+    enabled: issues.length > 0 && !!user
   })
 
   // Create issue mutation
   const createIssueMutation = useMutation({
     mutationFn: async (title: string) => {
-      if (!user?.user_metadata?.username) {
-        throw new Error('Username not found')
-      }
+      if (!user) throw new Error('User not authenticated')
+
+      // Get user's username from the users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', user.id)
+        .single()
+
+      if (userError) throw userError
 
       const { data, error } = await supabase
         .from('current_issues')
         .insert({
-          username: user.user_metadata.username,
+          username: userData.username,
           issue_title: title
         })
         .select()

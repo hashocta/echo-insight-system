@@ -45,6 +45,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { RealTimeNotifications } from '@/components/RealTimeNotifications'
 
 const navigationItems = [
   {
@@ -88,15 +89,18 @@ const navigationItems = [
 function AppSidebar() {
   const location = useLocation()
   const [darkMode, setDarkMode] = useState(false)
+  const { user } = useAuth()
 
-  // Fetch notification counts
+  // Fetch notification counts - RLS automatically filters by user_id
   const { data: notificationCounts } = useQuery({
     queryKey: ['notification-counts'],
     queryFn: async () => {
+      if (!user) throw new Error('User not authenticated')
+
       const { data: feedbacks } = await supabase
         .from('feedbacks')
         .select('id, processed_at')
-        .order('received_at', { ascending: false })
+        .order('received_at', { ascending: false }) // Uses idx_feedbacks_received_at
         .limit(50)
 
       const { data: issues } = await supabase
@@ -110,6 +114,7 @@ function AppSidebar() {
       }
     },
     refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: !!user
   })
 
   const toggleDarkMode = () => {
@@ -243,11 +248,8 @@ export const EnhancedDashboard = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Notifications */}
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-                </Button>
+                {/* Real-time Notifications */}
+                <RealTimeNotifications />
 
                 {/* Performance Indicator */}
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs">
